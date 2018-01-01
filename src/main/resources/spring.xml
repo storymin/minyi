@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"  xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop" xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+       http://www.springframework.org/schema/aop
+       http://www.springframework.org/schema/aop/spring-aop.xsd
+       http://code.alibabatech.com/schema/dubbo
+       http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+    <!-- 自动注入配置 -->      
+    <context:component-scan base-package="com.min"/>
+    <!-- jdbc配置文件引入 -->
+	<context:property-placeholder location="classpath:jdbc.properties" />
+    <!-- 数据源配置 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+		<property name="url" value="${jdbc.url}"/>
+		<property name="username" value="${jdbc.username}"/>
+		<property name="password" value="${jdbc.password}"/>
+	</bean>
+	<!-- mybatis配置 -->
+	<bean id="mySqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+	    <property name="dataSource" ref="dataSource"/>
+	    <property name="configLocation" value="classpath:mybatis-config.xml"/>
+	    <property name="mapperLocations" value="classpath:mybatis/*.xml"/>
+	</bean>
+	<bean id="mySqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" ref="mySqlSessionFactory" />
+	</bean>
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+	    <property name="basePackage" value="com.min.dao"></property>
+	    <property name="sqlSessionFactoryBeanName" value="mySqlSessionFactory"></property>
+	    <property name="sqlSessionTemplateBeanName" value="mySqlSession"></property>
+	</bean>
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+	   <property name="dataSource" ref="dataSource"/>
+    </bean>
+	<!--配置事务的传播性-->
+	<tx:advice id="myAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="add*" propagation="REQUIRED" />
+			<tx:method name="del*" propagation="REQUIRED" />
+			<tx:method name="update*" propagation="REQUIRED" />
+			<tx:method name="save*" propagation="REQUIRED" />
+			<tx:method name="insert*" propagation="REQUIRED" />
+			<tx:method name="*" read-only="true" propagation="SUPPORTS" />
+		</tx:attributes>
+	</tx:advice>
+
+	<!--配置哪些类哪些方法使用事务-->
+	<aop:config proxy-target-class="true">
+		<aop:pointcut id="myServiceMethod"
+			expression="execution(* com.min.service.*.*(..))" />
+		<aop:advisor advice-ref="myAdvice" pointcut-ref="myServiceMethod" />
+	</aop:config>
+	
+	<!-- dubbo配置 -->
+	<dubbo:application name="provider"/>
+	
+	<!-- 配置zookerper注册中心 -->
+	<dubbo:registry address="zookeeper://127.0.0.1:2181"/>
+	
+	<!-- 用dubbo在20880端口暴露服务 -->
+	<dubbo:protocol name="dubbo" port="20880"/>
+	
+	<!-- 声明需要暴露的服务接口 -->
+	<dubbo:service interface="com.min.server.SayHello" ref="sayHello"/>
+</beans>
