@@ -2,7 +2,7 @@ package com.min.service.impl;
 
 import org.springframework.stereotype.Service;
 
-import com.min.server.SayHello;
+import com.gzu.SayHello;
 
 @Service("sayHello")
 public class SayHelloImpl implements SayHello
